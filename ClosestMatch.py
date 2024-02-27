@@ -52,10 +52,7 @@ class Trie:
             
         if pos.end and row[-1] <= max_cost:
             results.append((row[-1], curr))
-            current_min = min(results)
 
-            results[:] = [ sol for sol in results if sol[0] == current_min[0] ]
-			
         if min(row) <= max_cost:
             for (next_letter, node) in pos.children.items():
                 self._find(node, word, curr + next_letter, row, results, min(max_cost, row[-1]))
@@ -65,4 +62,8 @@ class Trie:
         results = []
         for (first_letter, node) in self.root.children.items():
             self._find(node, word, first_letter, range(len(word) + 1), results, len(word))
+        
+        results.sort()
+        if len(results) > 10:
+            results = results[:10]
         return results
