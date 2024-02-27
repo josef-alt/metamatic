@@ -50,30 +50,51 @@ def dictionary_insert(name, dict):
     dict_file.write(f'\n{name}')
     dict_file.close()
 
-def prompt_user(suggestions):
+def prompt_user(suggestions, ask_dict=True):
     """Display a list of suggestions and prompt the user to select one."""
     num_suggestions = len(suggestions)
-    for i in range(num_suggestions):
+    if ask_dict:
+        print('0 run against dictionary')
+    for i in range(1, num_suggestions):
         print(i, suggestions[i])
         
     correct_spelling = str()
     found = False
     while not correct_spelling:
-        response = input('selection or correct spelling:')
-        if response.isnumeric():
+        response = input('selection or correct spelling (blank to keep):')
+        if not response:
+            print('keep', suggestions[0])
+            correct_spelling = suggestions[0][1]
+            found = False
+        elif response.isnumeric():
             value = int(response)
-            if value < 0 or value > num_suggestions:
-                print('invalid response. try again')                
-            elif value == 0:
-                correct_spelling = suggestions[0][1]
-                found = False
+            if value == 0 and ask_dict:
+                correct_spelling = 'check_against_dictionary'
+            elif value < 1 or value > num_suggestions:
+                print('invalid response. try again') 
             else:
-                correct_spelling = suggestions[value - 1][1]
+                correct_spelling = suggestions[value][1]
                 found = True
         else:
             correct_spelling = response
             dictionary_insert(response, dictionary)
     return correct_spelling, found
+
+def check_against_dictionary(entry, dictionary):
+    assembled = str()
+    for token in entry.split(' '):
+        if not dictionary.find_exact(token):
+            if input(f'is {token} correct?') == 'yes':
+                assembled += ' ' + token
+                dictionary_insert(token, dictionary)
+            else:
+                suggestions = dictionary.find_nearest(token)
+                suggestions.insert(0, (-1, token))
+                response, dummy = prompt_user(suggestions, False)
+                assembled += ' ' + response
+        else:
+            assembled += ' ' + token
+    return assembled
 
 def check_spelling(entry, known, dictionary):
     """Compare entry to elements from known Trie with dictionary as fallback"""
@@ -83,24 +104,16 @@ def check_spelling(entry, known, dictionary):
     
     found_spellings = known.find_nearest(entry)
     if not found_spellings:
-        for token in entry.split(' '):
-            if not dictionary.find_exact(token):
-                if input(f'is {token} correct?') == 'yes':
-                    assembled += ' ' + token
-                    dictionary_insert(token, dictionary)
-                else:
-                    suggestions = dictionary.find_nearest(token)
-                    suggestions.insert(0, (-1, token))
-                    response, dummy = prompt_user(suggestions)
-                    assembled += ' ' + response
-            else:
-                assembled += ' ' + token
+        assembled = check_against_dictionary(entry, dictionary)
     elif min(found_spellings)[0] == 0:
         found = True
         assembled = min(found_spellings)[1]
     else:
         found_spellings.insert(0, (0, entry))
         assembled, found = prompt_user(found_spellings)
+        if assembled == 'check_against_dictionary':
+            print('passing to dict')
+            assembled = check_against_dictionary(entry, dictionary)
         
     if not found:
         assembled = assembled.strip()
@@ -114,7 +127,7 @@ def check_attribute(attr, trie, dict):
     # todo write corrected tag?
 
 if __name__ == '__main__':
-	dir = 'files'
+    dir = 'files'
     format = "%-35s%-35s"
 
     dictionary = get_dictionary()
